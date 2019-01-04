@@ -75,15 +75,14 @@ class GlobalSearch
     {
         $this->searchTerm = $searchTerm;
 
-        return self::$models->filter(Closure::fromCallable([$this, 'authorizedToSearch']))
+        return collect(self::$models)->filter(Closure::fromCallable([$this, 'authorizedToSearch']))
             ->map(Closure::fromCallable([$this, 'getResultsFor']))
             ->filter(function ($results) {
                 return count($results) > 0 || $this->includeEmpty;
             })
             ->unless($this->useGroups, function ($collection) {
                 return $collection->flatten(1);
-            })
-            ->all();
+            });
     }
 
     /**

@@ -9,6 +9,7 @@ use Dzava\GlobalSearch\Tests\Fixtures\Post;
 use Dzava\GlobalSearch\Tests\Fixtures\User;
 use Dzava\GlobalSearch\Tests\Fixtures\UserWithOrderedQuery;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Gate;
@@ -36,7 +37,8 @@ class GlobalSearchTest extends TestCase
 
         $results = (new GlobalSearch())->search();
 
-        $this->assertArrayKeys('users', $results);
+        $this->assertInstanceOf(Collection::class, $results);
+        $this->assertArrayKeys('users', $results->all());
     }
 
     /** @test */
@@ -66,7 +68,7 @@ class GlobalSearchTest extends TestCase
             ->withEmpty()
             ->search();
 
-        $this->assertArrayKeys('users', $results);
+        $this->assertArrayKeys('users', $results->all());
     }
 
     /** @test */
@@ -80,7 +82,7 @@ class GlobalSearchTest extends TestCase
             ->withEmpty()
             ->search();
 
-        $this->assertArrayKeys(['Accounts', 'posts'], $results);
+        $this->assertArrayKeys(['Accounts', 'posts'], $results->all());
     }
 
     /** @test */
@@ -114,6 +116,15 @@ class GlobalSearchTest extends TestCase
 
         $this->assertCount(1, $results);
         $this->assertEquals($user->name, array_get($results, 'users.0.name'));
+    }
+
+    /** @test */
+    public function returns_an_empty_collection_when_no_models_are_configured()
+    {
+        $results = (new GlobalSearch())->search();
+
+        $this->assertInstanceOf(Collection::class, $results);
+        $this->assertEmpty($results);
     }
 
     /** @test */
