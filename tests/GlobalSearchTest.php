@@ -32,10 +32,11 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function searches_searchable_models()
     {
-        GlobalSearch::registerModels([User::class, Post::class]);
         factory(User::class, 2)->create();
 
-        $results = (new GlobalSearch())->search();
+        $results = (new GlobalSearch())
+            ->withModels([User::class, Post::class])
+            ->search();
 
         $this->assertInstanceOf(Collection::class, $results);
         $this->assertArrayKeys('users', $results->all());
@@ -52,9 +53,9 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function does_not_include_empty_results()
     {
-        GlobalSearch::registerModels(User::class);
-
-        $results = (new GlobalSearch())->search();
+        $results = (new GlobalSearch())
+            ->withModels(User::class)
+            ->search();
 
         $this->assertEmpty($results);
     }
@@ -62,9 +63,8 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function can_be_configured_to_include_empty_results()
     {
-        GlobalSearch::registerModels(User::class);
-
         $results = (new GlobalSearch())
+            ->withModels(User::class)
             ->withEmpty()
             ->search();
 
@@ -74,11 +74,8 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function can_customize_the_groups()
     {
-        GlobalSearch::registerModels([
-            'Accounts' => User::class, Post::class,
-        ]);
-
         $results = (new GlobalSearch())
+            ->withModels(['Accounts' => User::class, Post::class,])
             ->withEmpty()
             ->search();
 
@@ -88,11 +85,11 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function can_disable_grouping()
     {
-        GlobalSearch::registerModels([User::class, Post::class]);
         $user = factory(User::class)->create();
         $post = factory(Post::class)->create();
 
         $results = (new GlobalSearch())
+            ->withModels([User::class, Post::class])
             ->withEmpty()
             ->withoutGroups()
             ->search();
@@ -105,14 +102,15 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function respects_authorization_policies()
     {
-        GlobalSearch::registerModels([User::class, Post::class]);
         $user = factory(User::class)->create();
         factory(Post::class)->create();
         Gate::policy(Post::class, DenyPolicy::class);
         Gate::policy(User::class, AllowPolicy::class);
         Auth::login($user);
 
-        $results = (new GlobalSearch())->search();
+        $results = (new GlobalSearch())
+            ->withModels([User::class, Post::class])
+            ->search();
 
         $this->assertCount(1, $results);
         $this->assertEquals($user->name, array_get($results, 'users.0.name'));
@@ -130,10 +128,11 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function can_provide_a_custom_search_query()
     {
-        GlobalSearch::registerModels(Post::class);
         Post::$searchQueryCalled = false;
 
-        (new GlobalSearch())->search();
+        (new GlobalSearch())
+            ->withModels([User::class, Post::class])
+            ->search();
 
         $this->assertTrue(Post::$searchQueryCalled);
     }
@@ -149,27 +148,31 @@ class GlobalSearchTest extends TestCase
         ]);
         $usersOrderedByIdDesc = $users->sortByDesc('id');
 
-        GlobalSearch::registerModels(User::class);
-        ['users' => $result] = (new GlobalSearch())->withoutFormatting()->search('doe');
+        ['users' => $result] = (new GlobalSearch())
+            ->withModels(User::class)
+            ->withoutFormatting()
+            ->search('doe');
         $users->assertEquals($result);
 
-        GlobalSearch::registerModels(['users' => UserWithOrderedQuery::class]);
-        ['users' => $result] = (new GlobalSearch())->withoutFormatting()->search('doe');
+        ['users' => $result] = (new GlobalSearch())
+            ->withModels(['users' => UserWithOrderedQuery::class])
+            ->withoutFormatting()
+            ->search('doe');
         $usersOrderedByIdDesc->assertEquals($result);
     }
 
     /** @test */
     public function only_searches_the_searchable_fields()
     {
-        GlobalSearch::registerModels(User::class);
+        $globalsearch = (new GlobalSearch())->withModels(User::class);
         $searchTerm = 'john';
 
         factory(User::class)->create(['name' => 'Jane Doe', 'email' => 'john@example.com']);
-        $results = (new GlobalSearch())->search($searchTerm);
+        $results = $globalsearch->search($searchTerm);
         $this->assertEmpty($results);
 
         factory(User::class)->create(['name' => 'John Doe']);
-        $results = (new GlobalSearch())->search($searchTerm);
+        $results = $globalsearch->search($searchTerm);
         $this->assertCount(1, $results['users']);
         $this->assertEquals('John Doe', $results['users'][0]['name']);
     }
@@ -177,12 +180,13 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function can_customize_the_result_format()
     {
-        GlobalSearch::registerModels([User::class, Post::class]);
         $user = factory(User::class)->create();
         $post = factory(Post::class)->create();
         Config::set('globalsearch.toArray', 'toSearchResult');
 
-        $results = (new GlobalSearch())->search();
+        $results = (new GlobalSearch())
+            ->withModels([User::class, Post::class])
+            ->search();
 
         $this->assertEquals($post->toSearchResult(), $results['posts'][0]);
         $this->assertNotEquals($post->toArray(), $post->toSearchResult());
@@ -192,10 +196,12 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function can_disable_formatting()
     {
-        GlobalSearch::registerModels([User::class, Post::class]);
         $user = factory(User::class)->create();
 
-        ['users' => $users] = (new GlobalSearch())->withoutFormatting()->search();
+        ['users' => $users] = (new GlobalSearch())
+            ->withModels([User::class, Post::class])
+            ->withoutFormatting()
+            ->search();
 
         $this->assertInstanceOf(User::class, $users[0]);
         $this->assertTrue($user->is($users[0]));
@@ -204,14 +210,14 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function can_limit_the_max_number_of_results_in_each_group()
     {
-        GlobalSearch::registerModels(User::class);
+        $globalsearch = (new GlobalSearch())->withModels(User::class);
         factory(User::class, 10)->create();
 
-        $results = (new GlobalSearch())->search();
+        $results = $globalsearch->search();
 
         $this->assertCount(5, $results['users']);
 
-        $results = (new GlobalSearch())->limit(3)->search();
+        $results = $globalsearch->limit(3)->search();
 
         $this->assertCount(3, $results['users']);
     }
@@ -219,9 +225,8 @@ class GlobalSearchTest extends TestCase
     /** @test */
     public function does_not_apply_the_limit_when_set_to_zero()
     {
-        GlobalSearch::registerModels(User::class);
         factory(User::class, 10)->create();
-        $globalSearch = new GlobalSearch();
+        $globalSearch = (new GlobalSearch())->withModels(User::class);
 
         $results = $globalSearch->limit(3)->search();
         $this->assertCount(3, $results['users']);

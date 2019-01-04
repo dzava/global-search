@@ -16,7 +16,7 @@ class GlobalSearch
      *
      * @var \Illuminate\Support\Collection
      */
-    protected static $models = [];
+    protected $models;
 
     /**
      * Whether an empty group should be returned for models that, no records match the search
@@ -52,10 +52,11 @@ class GlobalSearch
      * Register the searchable models
      *
      * @param array|string $models
+     * @return \Dzava\GlobalSearch\GlobalSearch
      */
-    public static function registerModels($models)
+    public function withModels($models)
     {
-        self::$models = collect(Arr::wrap($models))
+        $this->models = collect(Arr::wrap($models))
             ->mapWithKeys(function ($model, $group) {
                 if (is_int($group)) {
                     $group = static::keyFor($model);
@@ -63,6 +64,8 @@ class GlobalSearch
 
                 return [$group => new $model];
             });
+
+        return $this;
     }
 
     /**
@@ -75,7 +78,7 @@ class GlobalSearch
     {
         $this->searchTerm = $searchTerm;
 
-        return collect(self::$models)->filter(Closure::fromCallable([$this, 'authorizedToSearch']))
+        return collect($this->models)->filter(Closure::fromCallable([$this, 'authorizedToSearch']))
             ->map(Closure::fromCallable([$this, 'getResultsFor']))
             ->filter(function ($results) {
                 return count($results) > 0 || $this->includeEmpty;

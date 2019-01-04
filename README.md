@@ -13,15 +13,7 @@ php artisan vendor:publish --tag=config --provider="Dzava\GlobalSearch\GlobalSea
 ```
 
 ## Usage
-Register the searchable models
-
-```php
-use Dzava\GlobalSearch\GlobalSearch;
-
-GlobalSearch::registerModels([User::class, Post::class])
-```
-
-Add the `searchableFields` method to the searchable models.
+Add the `searchableFields` method to searchable models.
 ```php
 
 class User extends Model {
@@ -42,7 +34,7 @@ Perform a search
 ```php
 use Dzava\GlobalSearch\GlobalSearch;
 
-$results = (new GlobalSearch()->search('Doe');
+$results = (new GlobalSearch())->withModels([User::class, Post::class])->search('Doe');
 
 //  [
 //      'users' => [
